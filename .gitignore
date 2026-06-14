@@ -1,0 +1,41 @@
+# deps
+node_modules
+.pnpm-store
+
+# build
+dist
+build
+.expo
+.expo-shared
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local
+
+# session storage (sensitive)
+.sessions/
+*.session.json
+
+# logs
+*.log
+logs/
+
+# os
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.idea
+
+# coverage
+coverage
+.nyc_output
+
+# playwright
+playwright-report/
+test-results/

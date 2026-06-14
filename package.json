@@ -1,0 +1,27 @@
+{
+  "name": "feedflow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FeedFlow — reclaim your Instagram feed.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "pnpm --filter @feedflow/api dev",
+    "dev:automation": "pnpm --filter @feedflow/automation dev",
+    "dev:mobile": "pnpm --filter @feedflow/mobile dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "db:push": "node scripts/db-push.mjs",
+    "clean": "pnpm -r exec rm -rf node_modules dist .expo"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
