@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "npx -y concurrently -c \"blue,green\" -n \"api,mobile\" \"pnpm dev:api\" \"pnpm dev:mobile\"",
     "dev:api": "pnpm --filter @feedflow/api dev",
     "dev:automation": "pnpm --filter @feedflow/automation dev",
     "dev:mobile": "pnpm --filter @feedflow/mobile dev",

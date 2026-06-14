@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(python \"C:/Users/ufota/.claude/skills/ui-ux-pro-max-skill/src/ui-ux-pro-max/scripts/search.py\" \"social automation productivity tool premium dark minimal\" --design-system -p \"FeedFlow\")"
-    ]
-  }
-}
