@@ -114,20 +114,21 @@ export default function DashboardScreen() {
                   <Activity color="#FFFFFF" size={24} />
                 </View>
               </View>
+
+              {/* Next run time — always visible inside the card */}
+              <View className="flex-row items-center mt-2">
+                <Clock color="rgba(255,255,255,0.5)" size={12} />
+                <Text className="text-white/50 text-xs ml-1.5" style={{ fontFamily: 'Inter_400Regular' }}>
+                  {isRunning
+                    ? 'Running now…'
+                    : nextRunLabel
+                      ? `Next run ${nextRunLabel}`
+                      : 'Tap Start Engine to begin'}
+                </Text>
+              </View>
             </LinearGradient>
           </View>
 
-          {/* Next Run info */}
-          {!isRunning && nextRunLabel && (
-            <View className="px-lg mb-lg -mt-2">
-              <View className="bg-surfaceElevated rounded-2xl px-4 py-3 border border-white/5 flex-row items-center">
-                <Clock color="#8E8E93" size={14} />
-                <Text className="text-muted text-sm ml-2" style={{ fontFamily: 'Inter_400Regular' }}>
-                  Next run scheduled <Text className="text-white font-semibold">{nextRunLabel}</Text>
-                </Text>
-              </View>
-            </View>
-          )}
 
           {/* Primary Cards */}
           <View className="px-lg flex-row gap-4 mb-xl">
