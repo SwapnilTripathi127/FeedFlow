@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM mcr.microsoft.com/playwright:v1.48.2-jammy AS builder
 # Set working directory
 WORKDIR /app
 # Install pnpm
@@ -18,7 +18,7 @@ RUN pnpm --filter @feedflow/shared build || true
 RUN pnpm --filter @feedflow/api build
 
 # Runner stage
-FROM node:20-alpine AS runner
+FROM mcr.microsoft.com/playwright:v1.48.2-jammy AS runner
 WORKDIR /app
 
 RUN npm install -g pnpm@9.12.0
