@@ -46,33 +46,43 @@ router.delete('/disconnect', async (req: AuthenticatedRequest, res) => {
 });
 
 // POST /instagram/connect
-// Endpoint to receive credentials and start the headless browser connection
+// New: Accepts a sessionid cookie extracted from the in-app WebView login.
+// The user logs in directly on their device (trusted residential IP),
+// the app extracts the cookie, and sends it here for secure storage.
 router.post('/connect', async (req: AuthenticatedRequest, res) => {
   try {
-    const { username, password } = req.body;
-    
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
+    const { username, sessionid } = req.body;
+
+    if (!username || !sessionid) {
+      return res.status(400).json({ error: 'Username and sessionid are required' });
     }
 
     const userId = req.user!.id;
 
     if (userId === 'demo-user') {
-      return res.status(400).json({ error: 'Demo Mode: Cannot connect real Instagram accounts. Please sign up to connect.' });
+      return res.status(400).json({ error: 'Demo Mode: Cannot connect real Instagram accounts. Please sign up.' });
     }
 
-    // 0. Ensure user exists in public.users to prevent foreign key constraint failures
+    // Ensure user exists in public.users to prevent FK constraint failures
     const { data: userRecord } = await supabaseAdmin.auth.admin.getUserById(userId);
     if (userRecord?.user?.email) {
-      await supabaseAdmin.from('users').upsert({
-        id: userId,
-        email: userRecord.user.email
-      });
+      await supabaseAdmin.from('users').upsert({ id: userId, email: userRecord.user.email });
     }
 
-    // 1. Create or get instagram account row
-    let accountId;
-    const { data: existing, error: fetchErr } = await supabaseAdmin
+    // Encrypt the session cookie before storing
+    const crypto = require('crypto');
+    const ENCRYPTION_KEY = process.env.SESSION_ENCRYPTION_KEY || 'default_secret_key_needs_32_bytes!';
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32)), iv);
+
+    // Build a minimal cookie array that the automation worker expects
+    const cookiePayload = [{ name: 'sessionid', value: sessionid, domain: '.instagram.com', path: '/' }];
+    let encrypted = cipher.update(JSON.stringify(cookiePayload));
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    const encryptedSession = iv.toString('hex') + ':' + encrypted.toString('hex');
+
+    // Upsert the instagram account row
+    const { data: existing } = await supabaseAdmin
       .from('instagram_accounts')
       .select('id')
       .eq('user_id', userId)
@@ -80,128 +90,32 @@ router.post('/connect', async (req: AuthenticatedRequest, res) => {
       .single();
 
     if (existing) {
-      accountId = existing.id;
-    } else {
-      const { data: newAcc, error: insertErr } = await supabaseAdmin
-        .from('instagram_accounts')
-        .insert({ user_id: userId, username, connection_status: 'connecting' })
-        .select()
-        .single();
-      if (insertErr) throw insertErr;
-      accountId = newAcc.id;
-    }
-
-    // 2. Perform Playwright Login
-    const { chromium } = require('playwright');
-    
-    const isHeadless = process.env.AUTOMATION_HEADLESS === 'true';
-    const browser = await chromium.launch({ headless: isHeadless });
-    const context = await browser.newContext({
-      userAgent: process.env.AUTOMATION_USER_AGENT || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    });
-    const page = await context.newPage();
-    
-    await page.goto('https://www.instagram.com/accounts/login/', { waitUntil: 'domcontentloaded' });
-    
-    // Attempt to accept cookies if presented (common in EU/headless)
-    try {
-      const cookieBtn = page.locator('button', { hasText: /Allow all cookies/i }).first();
-      await cookieBtn.waitFor({ state: 'visible', timeout: 5000 });
-      await cookieBtn.click();
-      await page.waitForTimeout(1000); // Give it a second to dismiss
-    } catch (e) {
-      // Ignore if not present
-    }
-
-    try {
-      // Wait for either the standard username field or the fallback email field
-      const userInput = page.locator('input[name="username"], input[name="email"]').first();
-      await userInput.waitFor({ state: 'visible', timeout: 15000 });
-      
-      const isFallbackForm = await page.locator('input[name="email"]').count() > 0;
-      
-      if (isFallbackForm) {
-        await page.fill('input[name="email"]', username);
-        await page.fill('input[name="pass"]', password);
-      } else {
-        await page.fill('input[name="username"]', username);
-        await page.fill('input[name="password"]', password);
-      }
-      
-      await page.keyboard.press('Enter');
-    } catch (e: any) {
-      const title = await page.title();
-      const content = await page.content();
-      const isBlocked = content.includes('Challenge Required') || content.includes('Please wait a few minutes');
-      throw new Error(`Instagram Login Timeout. Page Title: "${title}". Blocked: ${isBlocked}. Original Error: ${e.message}`);
-    }
-    
-    try {
-      // Wait for the sessionid cookie to appear.
-      // We poll from the Node.js side (context.cookies) instead of page.waitForFunction 
-      // because Instagram will redirect to a password reset page, which destroys the page context and causes crashes!
-      // Polling for sessionid cookie for 15 seconds
-      let foundSession = false;
-      for (let i = 0; i < 15; i++) {
-        const currentCookies = await context.cookies();
-        if (currentCookies.some((c: any) => c.name === 'sessionid')) {
-          foundSession = true;
-          break;
-        }
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-
-      if (!foundSession) {
-        const title = await page.title();
-        const content = await page.content();
-        // Try to extract common error messages from the page
-        const errorMsg = await page.evaluate(() => {
-          const el = document.querySelector('[role="alert"], .error, #slfErrorAlert');
-          return el ? el.textContent : null;
-        }).catch(() => null);
-        
-        throw new Error(`Login failed or requires 2FA. Page Title: "${title}". Instagram Error: ${errorMsg || 'None detected'}`);
-      }
-      const cookies = await context.cookies();
-      
-      // We will encrypt using the same logic as automation
-      const crypto = require('crypto');
-      const ENCRYPTION_KEY = process.env.SESSION_ENCRYPTION_KEY || 'default_secret_key_needs_32_bytes!';
-      const iv = crypto.randomBytes(16);
-      const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32)), iv);
-      let encrypted = cipher.update(JSON.stringify(cookies));
-      encrypted = Buffer.concat([encrypted, cipher.final()]);
-      const encryptedSession = iv.toString('hex') + ':' + encrypted.toString('hex');
-
       await supabaseAdmin.from('instagram_accounts').update({
         encrypted_session_data: encryptedSession,
         session_status: 'valid',
         connection_status: 'connected',
         updated_at: new Date().toISOString()
-      }).eq('id', accountId);
-
-      await browser.close();
-
-      res.json({ 
-        success: true, 
-        account: {
-          username: username,
-          profilePicUrl: 'https://i.pravatar.cc/150?u=' + username,
-          connectedAt: new Date().toISOString()
-        }
+      }).eq('id', existing.id);
+    } else {
+      await supabaseAdmin.from('instagram_accounts').insert({
+        user_id: userId,
+        username,
+        encrypted_session_data: encryptedSession,
+        session_status: 'valid',
+        connection_status: 'connected'
       });
-    } catch (e) {
-      console.error('Playwright/Save Error:', e);
-      await browser.close().catch(() => {});
-      await supabaseAdmin.from('instagram_accounts').update({
-        connection_status: 'disconnected',
-        session_status: 'invalid'
-      }).eq('id', accountId);
-      
-      return res.status(401).json({ error: 'Login failed. Please check your credentials.' });
     }
+
+    res.json({
+      success: true,
+      account: {
+        username,
+        profilePicUrl: 'https://i.pravatar.cc/150?u=' + username,
+        connectedAt: new Date().toISOString()
+      }
+    });
   } catch (error: any) {
-    console.error('Top-level API Error:', error);
+    console.error('Connect Error:', error);
     res.status(500).json({ error: error.message });
   }
 });

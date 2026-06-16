@@ -22,15 +22,14 @@ export function useConnectInstagram() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (credentials: { username: string; password: string }) => {
+    mutationFn: async (payload: { username: string; sessionid: string }) => {
       const data = await fetchApi('/instagram/connect', {
         method: 'POST',
-        body: JSON.stringify(credentials),
+        body: JSON.stringify(payload),
       });
       return data;
     },
     onSuccess: (data) => {
-      // Update the status cache directly
       if (data.success && data.account) {
         queryClient.setQueryData(['instagram', 'status'], {
           connected: true,
