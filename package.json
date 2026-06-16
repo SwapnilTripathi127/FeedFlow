@@ -24,5 +24,10 @@
   "packageManager": "pnpm@9.12.0",
   "engines": {
     "node": ">=20.0.0"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "react-native-css-interop@0.2.5": "patches/react-native-css-interop@0.2.5.patch"
+    }
   }
 }
