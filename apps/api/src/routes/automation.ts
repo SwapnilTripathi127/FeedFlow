@@ -284,12 +284,12 @@ router.get('/stats', async (req: AuthenticatedRequest, res) => {
 
     const { data: activeJobs } = await supabaseAdmin
       .from('automation_jobs')
-      .select('id')
+      .select('id, status')
       .eq('instagram_account_id', account.id)
-      .in('status', ['pending', 'running'])
-      .limit(1);
+      .in('status', ['pending', 'running']);
 
     const isRunning = activeJobs && activeJobs.length > 0;
+    const isExecuting = activeJobs?.some(job => job.status === 'running') || false;
 
     // Next scheduled run
     const { data: nextJob } = await supabaseAdmin
@@ -344,6 +344,7 @@ router.get('/stats', async (req: AuthenticatedRequest, res) => {
 
     res.json({
       isRunning,
+      isExecuting,
       personalizationScore: analytics?.personalization_score || 0,
       actionsToday: analytics?.actions_today || 0,
       totalRuns: totalRuns || 0,

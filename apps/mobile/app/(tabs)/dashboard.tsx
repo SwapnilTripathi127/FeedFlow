@@ -18,6 +18,7 @@ export default function DashboardScreen() {
 
   const isConnected = instagramStatus?.connected;
   const isRunning = autoStats?.isRunning || false;
+  const isExecuting = autoStats?.isExecuting || false;
   
   const handleToggleEngine = () => {
     if (isRunning) {
@@ -119,7 +120,7 @@ export default function DashboardScreen() {
               <View className="flex-row items-center mt-2">
                 <Clock color="rgba(255,255,255,0.5)" size={12} />
                 <Text className="text-white/50 text-xs ml-1.5" style={{ fontFamily: 'Inter_400Regular' }}>
-                  {isRunning
+                  {isExecuting
                     ? 'Running now…'
                     : nextRunLabel
                       ? `Next run ${nextRunLabel}`
@@ -158,37 +159,57 @@ export default function DashboardScreen() {
             <Text className="text-white text-xl font-bold mb-4" style={{ fontFamily: 'Inter_700Bold' }}>Recent Activity</Text>
             <View className="bg-surfaceElevated rounded-3xl p-5 border border-white/5">
               {isRunning ? (
-                <>
-                  <View className="flex-row items-start mb-6">
-                    <View className="w-8 h-8 rounded-full bg-[#38383A] items-center justify-center mr-4 mt-1 border border-[#48484A]">
-                      <Activity color="#8E8E93" size={14} />
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-white text-base font-semibold mb-1" style={{ fontFamily: 'Inter_600SemiBold' }}>Analyzing Feed</Text>
-                      <Text className="text-muted text-sm" style={{ fontFamily: 'Inter_400Regular' }}>{formatTime(0)}</Text>
-                    </View>
-                  </View>
+                autoStats?.recentLogs && autoStats.recentLogs.length > 0 ? (
+                  autoStats.recentLogs.slice(0, 4).map((log, index) => {
+                    // Create relative time like "2h ago"
+                    const diffMs = now.getTime() - new Date(log.timestamp).getTime();
+                    const diffMins = Math.floor(diffMs / 60000);
+                    let timeAgo = '';
+                    if (diffMins < 1) timeAgo = 'Just now';
+                    else if (diffMins < 60) timeAgo = `${diffMins}m ago`;
+                    else timeAgo = `${Math.floor(diffMins / 60)}h ${diffMins % 60}m ago`;
 
-                  <View className="flex-row items-start mb-6">
-                    <View className="w-8 h-8 rounded-full bg-[#0A84FF]/20 items-center justify-center mr-4 mt-1">
-                      <Zap color="#0A84FF" size={14} />
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-white text-base font-semibold mb-1" style={{ fontFamily: 'Inter_600SemiBold' }}>Reinforced Topics</Text>
-                      <Text className="text-muted text-sm" style={{ fontFamily: 'Inter_400Regular' }}>{formatTime(2)}</Text>
-                    </View>
-                  </View>
+                    // Choose icon based on message content
+                    let IconComponent = Activity;
+                    let iconColor = "#8E8E93";
+                    let bgColor = "#38383A";
 
-                  <View className="flex-row items-start">
-                    <View className="w-8 h-8 rounded-full bg-[#10B981]/20 items-center justify-center mr-4 mt-1">
-                      <CircleCheck color="#10B981" size={14} />
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-white text-base font-semibold mb-1" style={{ fontFamily: 'Inter_600SemiBold' }}>Completed Cycle</Text>
-                      <Text className="text-muted text-sm" style={{ fontFamily: 'Inter_400Regular' }}>{formatTime(5)}</Text>
-                    </View>
+                    if (log.message.includes('Liked') || log.message.includes('Saved')) {
+                      IconComponent = Zap;
+                      iconColor = "#0A84FF";
+                      bgColor = "rgba(10,132,255,0.2)";
+                    } else if (log.message.includes('skipped')) {
+                      IconComponent = CircleCheck;
+                      iconColor = "#10B981";
+                      bgColor = "rgba(16,185,129,0.2)";
+                    } else if (log.message.includes('failed') || log.message.includes('error')) {
+                      IconComponent = Activity;
+                      iconColor = "#FF2D55";
+                      bgColor = "rgba(255,45,85,0.2)";
+                    }
+
+                    return (
+                      <View key={index} className={`flex-row items-start ${index === Math.min(autoStats.recentLogs!.length, 4) - 1 ? '' : 'mb-6'}`}>
+                        <View className={`w-8 h-8 rounded-full items-center justify-center mr-4 mt-1`} style={{ backgroundColor: bgColor }}>
+                          <IconComponent color={iconColor} size={14} />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-white text-base font-semibold mb-1" style={{ fontFamily: 'Inter_600SemiBold' }}>
+                            {log.message}
+                          </Text>
+                          <Text className="text-muted text-sm" style={{ fontFamily: 'Inter_400Regular' }}>{timeAgo}</Text>
+                        </View>
+                      </View>
+                    );
+                  })
+                ) : (
+                  <View className="items-center justify-center py-6">
+                    <Activity color="#8E8E93" size={32} className="mb-3" />
+                    <Text className="text-muted text-base text-center" style={{ fontFamily: 'Inter_500Medium' }}>
+                      Engine is active. Waiting for the first automated cycle...
+                    </Text>
                   </View>
-                </>
+                )
               ) : (
                  <View className="items-center justify-center py-6">
                     <Clock color="#8E8E93" size={32} className="mb-3" />
@@ -227,17 +248,17 @@ export default function DashboardScreen() {
 
             {/* Run Now button */}
             <TouchableOpacity
-              className="h-14 rounded-xl items-center flex-row justify-center mb-3 bg-surfaceElevated border border-[#FF9500]/30"
-              disabled={runNow.isPending || isRunning}
+              className={`h-14 rounded-xl items-center flex-row justify-center mb-3 bg-surfaceElevated border ${isExecuting ? 'border-[#FF9500]/10' : 'border-[#FF9500]/30'}`}
+              disabled={runNow.isPending || isExecuting}
               onPress={() => runNow.mutate()}
             >
-              {runNow.isPending ? (
+              {(runNow.isPending || isExecuting) ? (
                 <ActivityIndicator color="#FF9500" className="mr-2" />
               ) : (
                 <Zap color="#FF9500" size={20} className="mr-2" />
               )}
               <Text className="font-semibold text-lg text-[#FF9500]" style={{ fontFamily: 'Inter_600SemiBold' }}>
-                {runNow.isPending ? 'Running now...' : isRunning ? 'Already Running' : 'Run Now'}
+                {(runNow.isPending || isExecuting) ? 'Running now...' : 'Run Now'}
               </Text>
             </TouchableOpacity>
 

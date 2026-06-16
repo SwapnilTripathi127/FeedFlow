@@ -3,6 +3,7 @@ import { fetchApi } from '../services/api';
 
 export type AutomationStats = {
   isRunning: boolean;
+  isExecuting: boolean;
   personalizationScore: number;
   actionsToday: number;
   totalRuns: number;
