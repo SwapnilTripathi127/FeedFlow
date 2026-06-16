@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, ActivityIndicator, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Play, Square, Activity, Zap, Camera, TrendingUp, Clock, CircleCheck, LogOut } from 'lucide-react-native';
+import { Play, Square, Activity, Zap, Camera, TrendingUp, Clock, CircleCheck, LogOut, Bolt } from 'lucide-react-native';
 import { useInstagramStatus, useDisconnectInstagram } from '../../src/hooks/useInstagram';
-import { useAutomationStats, useStartAutomation, useStopAutomation } from '../../src/hooks/useAutomation';
+import { useAutomationStats, useStartAutomation, useStopAutomation, useRunNowAutomation } from '../../src/hooks/useAutomation';
 import { ConnectInstagramModal } from '../../src/components/ConnectInstagramModal';
 
 export default function DashboardScreen() {
@@ -13,6 +13,7 @@ export default function DashboardScreen() {
   
   const startEngine = useStartAutomation();
   const stopEngine = useStopAutomation();
+  const runNow = useRunNowAutomation();
   const disconnectInstagram = useDisconnectInstagram();
 
   const isConnected = instagramStatus?.connected;
@@ -38,6 +39,20 @@ export default function DashboardScreen() {
     const d = new Date(now.getTime() - hoursAgo * 60 * 60 * 1000);
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
+
+  const formatNextRun = (nextRunAt: string | null) => {
+    if (!nextRunAt) return null;
+    const next = new Date(nextRunAt);
+    const diffMs = next.getTime() - now.getTime();
+    if (diffMs <= 0) return 'Any moment now';
+    const diffMins = Math.floor(diffMs / 60000);
+    const hrs = Math.floor(diffMins / 60);
+    const mins = diffMins % 60;
+    if (hrs > 0) return `in ${hrs}h ${mins}m`;
+    return `in ${mins}m`;
+  };
+
+  const nextRunLabel = formatNextRun(autoStats?.nextRunAt ?? null);
 
   return (
     <ScrollView className="flex-1 bg-background" contentContainerStyle={{ paddingBottom: 100 }}>
@@ -101,6 +116,18 @@ export default function DashboardScreen() {
               </View>
             </LinearGradient>
           </View>
+
+          {/* Next Run info */}
+          {!isRunning && nextRunLabel && (
+            <View className="px-lg mb-lg -mt-2">
+              <View className="bg-surfaceElevated rounded-2xl px-4 py-3 border border-white/5 flex-row items-center">
+                <Clock color="#8E8E93" size={14} />
+                <Text className="text-muted text-sm ml-2" style={{ fontFamily: 'Inter_400Regular' }}>
+                  Next run scheduled <Text className="text-white font-semibold">{nextRunLabel}</Text>
+                </Text>
+              </View>
+            </View>
+          )}
 
           {/* Primary Cards */}
           <View className="px-lg flex-row gap-4 mb-xl">
@@ -175,7 +202,7 @@ export default function DashboardScreen() {
             <Text className="text-white text-xl font-bold mb-4" style={{ fontFamily: 'Inter_700Bold' }}>Quick Actions</Text>
             
             <TouchableOpacity 
-              className={`h-14 rounded-xl items-center flex-row justify-center mb-4 ${isRunning ? 'bg-surfaceElevated border border-white/10' : 'bg-[#FA233B]'}`}
+              className={`h-14 rounded-xl items-center flex-row justify-center mb-3 ${isRunning ? 'bg-surfaceElevated border border-white/10' : 'bg-[#FA233B]'}`}
               disabled={startEngine.isPending || stopEngine.isPending}
               onPress={handleToggleEngine}
             >
@@ -194,6 +221,22 @@ export default function DashboardScreen() {
                     : isRunning 
                       ? 'Pause Engine' 
                       : 'Start Engine'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Run Now button */}
+            <TouchableOpacity
+              className="h-14 rounded-xl items-center flex-row justify-center mb-3 bg-surfaceElevated border border-[#FF9500]/30"
+              disabled={runNow.isPending || isRunning}
+              onPress={() => runNow.mutate()}
+            >
+              {runNow.isPending ? (
+                <ActivityIndicator color="#FF9500" className="mr-2" />
+              ) : (
+                <Zap color="#FF9500" size={20} className="mr-2" />
+              )}
+              <Text className="font-semibold text-lg text-[#FF9500]" style={{ fontFamily: 'Inter_600SemiBold' }}>
+                {runNow.isPending ? 'Running now...' : isRunning ? 'Already Running' : 'Run Now'}
               </Text>
             </TouchableOpacity>
 

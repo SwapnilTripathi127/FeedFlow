@@ -8,6 +8,7 @@ export type AutomationStats = {
   totalRuns: number;
   postsAnalyzed: number;
   totalActionsTaken: number;
+  nextRunAt: string | null;
   topPreferences?: { name: string; percent: number }[];
   recentLogs?: { message: string; timestamp: string }[];
 };
@@ -44,6 +45,20 @@ export function useStopAutomation() {
   return useMutation({
     mutationFn: async () => {
       const data = await fetchApi('/automation/stop', { method: 'POST' });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['automation', 'stats'] });
+    },
+  });
+}
+
+export function useRunNowAutomation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const data = await fetchApi('/automation/run-now', { method: 'POST' });
       return data;
     },
     onSuccess: () => {
