@@ -58,7 +58,7 @@ export default function DashboardScreen() {
   return (
     <ScrollView className="flex-1 bg-background" contentContainerStyle={{ paddingBottom: 100 }}>
       <View className="px-lg pt-xxl pb-md">
-        <Text className="text-foreground text-4xl font-bold tracking-tight" style={{ fontFamily: 'Inter_700Bold' }}>Listen Now</Text>
+        <Text className="text-foreground text-4xl font-bold tracking-tight" style={{ fontFamily: 'Inter_700Bold' }}>Dashboard</Text>
       </View>
 
       {!isConnected ? (

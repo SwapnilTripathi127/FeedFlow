@@ -1,7 +1,7 @@
 import { Tabs as ExpoTabs } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { StyleSheet, View } from 'react-native';
-import { Play, List, Activity } from 'lucide-react-native';
+import { Home, Settings, Activity } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -34,9 +34,9 @@ export default function TabLayout() {
       <ExpoTabs.Screen
         name="dashboard"
         options={{
-          title: 'Listen Now',
+          title: 'Dashboard',
           tabBarIcon: ({ color, size }) => (
-            <Play color={color} size={26} />
+            <Home color={color} size={26} />
           ),
         }}
       />
@@ -52,9 +52,9 @@ export default function TabLayout() {
       <ExpoTabs.Screen
         name="preferences"
         options={{
-          title: 'Library',
+          title: 'Settings',
           tabBarIcon: ({ color, size }) => (
-            <List color={color} size={26} />
+            <Settings color={color} size={26} />
           ),
         }}
       />
