@@ -4,22 +4,12 @@
     "slug": "feedflow",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#09090B"
-    },
     "ios": {
       "supportsTablet": true
     },
     "android": {
-      "package": "com.ufota.feedflow",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#09090B"
-      }
+      "package": "com.ufota.feedflow"
     },
     "plugins": [
       "expo-router",
@@ -27,6 +17,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "0cface32-f188-4d09-9627-6af96e4eec9d"
+      }
     }
   }
 }
