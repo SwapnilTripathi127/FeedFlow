@@ -101,7 +101,7 @@ router.post('/connect', async (req: AuthenticatedRequest, res) => {
     });
     const page = await context.newPage();
     
-    await page.goto('https://www.instagram.com/', { waitUntil: 'domcontentloaded' });
+    await page.goto('https://www.instagram.com/accounts/login/', { waitUntil: 'domcontentloaded' });
     
     // Attempt to accept cookies if presented (common in EU/headless)
     try {
