@@ -198,6 +198,7 @@ async function runEngineForAccount(job: any) {
     const newScore = Math.min(100, Math.round((base.personalization_score || 0) + (likes + saves) * 2));
 
     await supabaseAdmin.from('analytics').insert({
+      user_id: userId,
       instagram_account_id: accountId,
       likes_count: (base.likes_count || 0) + likes,
       saves_count: (base.saves_count || 0) + saves,
