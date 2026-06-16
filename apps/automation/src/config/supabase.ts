@@ -21,5 +21,5 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   },
   global: {
     WebSocket,
-  },
+  } as any,
 });
