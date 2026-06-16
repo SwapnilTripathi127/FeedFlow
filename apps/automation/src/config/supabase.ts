@@ -1,8 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import path from 'path';
-
 import WebSocket from 'ws';
+
+// Assign WebSocket globally so Supabase Realtime picks it up natively
+(globalThis as any).WebSocket = WebSocket;
 
 dotenv.config({ path: path.resolve(process.cwd(), '../../.env') });
 
@@ -19,7 +21,4 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
     autoRefreshToken: false,
     persistSession: false
   },
-  global: {
-    WebSocket,
-  } as any,
 });
