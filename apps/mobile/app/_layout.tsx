@@ -4,7 +4,13 @@ import { View, Text } from 'react-native';
 import { useAuthStore } from '../src/store/authStore';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import { cssInterop } from 'nativewind';
+import { LinearGradient } from 'expo-linear-gradient';
 import '../src/theme/global.css';
+
+cssInterop(LinearGradient, {
+  className: 'style'
+});
 
 const queryClient = new QueryClient();
 

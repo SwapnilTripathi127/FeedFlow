@@ -42,6 +42,30 @@ export function useConnectInstagram() {
   });
 }
 
+export function useLoginInstagram() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { username: string; password: string }) => {
+      const data = await fetchApi('/instagram/login', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.success && data.account) {
+        queryClient.setQueryData(['instagram', 'status'], {
+          connected: true,
+          username: data.account.username,
+          profilePicUrl: data.account.profilePicUrl,
+          connectedAt: data.account.connectedAt,
+        });
+      }
+    },
+  });
+}
+
 export function useDisconnectInstagram() {
   const queryClient = useQueryClient();
 

@@ -1,81 +1,42 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   View, Text, TouchableOpacity, Modal, ActivityIndicator,
-  SafeAreaView, StatusBar,
+  SafeAreaView, StatusBar, TextInput, KeyboardAvoidingView,
+  Platform, ScrollView,
 } from 'react-native';
-import { WebView, WebViewNavigation } from 'react-native-webview';
-import CookieManager from '@react-native-cookies/cookies';
-import { useConnectInstagram } from '../hooks/useInstagram';
+import { useLoginInstagram } from '../hooks/useInstagram';
 
 type ConnectInstagramModalProps = {
   visible: boolean;
   onClose: () => void;
 };
 
-const INSTAGRAM_LOGIN_URL = 'https://www.instagram.com/accounts/login/';
-
-// Injected on page load to grab username from page title
-const USERNAME_EXTRACTOR_JS = `
-  (function() {
-    const titleMatch = document.title.match(/^([^•]+)\s*•/);
-    if (titleMatch && titleMatch[1].trim() !== 'Instagram') {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'username', value: titleMatch[1].trim() }));
-    }
-  })();
-  true;
-`;
-
 export function ConnectInstagramModal({ visible, onClose }: ConnectInstagramModalProps) {
-  const [isWebViewLoading, setIsWebViewLoading] = useState(true);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const usernameRef = useRef<string>('');
-  const webViewRef = useRef<WebView>(null);
-  const connectMutation = useConnectInstagram();
+  const loginMutation = useLoginInstagram();
 
-  const handleMessage = (event: { nativeEvent: { data: string } }) => {
-    try {
-      const msg = JSON.parse(event.nativeEvent.data);
-      if (msg.type === 'username' && msg.value) {
-        usernameRef.current = msg.value;
-      }
-    } catch (_) {}
-  };
-
-  const handleNavigationChange = (_navState: WebViewNavigation) => {
-    // Re-run username extractor on every navigation
-    webViewRef.current?.injectJavaScript(USERNAME_EXTRACTOR_JS);
-  };
-
-  const handleDone = async () => {
+  const handleConnect = async () => {
     setError(null);
-    try {
-      // Use native CookieManager to read ALL cookies including HttpOnly sessionid
-      const cookies = await CookieManager.get('https://www.instagram.com', true);
-      const sessionid = cookies['sessionid']?.value;
-
-      if (!sessionid) {
-        setError('Not logged in yet — please finish the Instagram login, then tap Done ✓.');
-        return;
-      }
-
-      const username = usernameRef.current || ('ig_user_' + Date.now());
-
-      connectMutation.mutate(
-        { username, sessionid },
-        {
-          onSuccess: () => handleClose(),
-          onError: (err: any) => setError(err.message || 'Failed to save session.'),
-        }
-      );
-    } catch (err: any) {
-      setError('Could not read cookies: ' + err.message);
+    if (!username.trim() || !password.trim()) {
+      setError('Please enter both your Instagram username and password.');
+      return;
     }
+
+    loginMutation.mutate(
+      { username: username.trim().replace('@', ''), password: password.trim() },
+      {
+        onSuccess: () => handleClose(),
+        onError: (err: any) => setError(err.message || 'Connection failed. Please try again.'),
+      }
+    );
   };
 
   const handleClose = () => {
-    usernameRef.current = '';
+    setUsername('');
+    setPassword('');
     setError(null);
-    setIsWebViewLoading(true);
     onClose();
   };
 
@@ -94,94 +55,155 @@ export function ConnectInstagramModal({ visible, onClose }: ConnectInstagramModa
           borderBottomWidth: 1,
           borderBottomColor: 'rgba(255,255,255,0.08)',
         }}>
-          <TouchableOpacity onPress={handleClose} disabled={connectMutation.isPending}>
-            <Text style={{ color: '#8E8E93', fontSize: 16, fontFamily: 'Inter_500Medium' }}>Cancel</Text>
+          <TouchableOpacity onPress={handleClose} disabled={loginMutation.isPending}>
+            <Text style={{ color: '#8E8E93', fontSize: 16 }}>Cancel</Text>
           </TouchableOpacity>
 
-          <Text style={{ color: '#fff', fontSize: 17, fontWeight: '700', fontFamily: 'Inter_700Bold' }}>
+          <Text style={{ color: '#fff', fontSize: 17, fontWeight: '700' }}>
             Connect Instagram
           </Text>
 
-          {/* Always-visible Done button */}
-          <TouchableOpacity
-            onPress={handleDone}
-            disabled={connectMutation.isPending}
-            style={{
-              backgroundColor: connectMutation.isPending ? 'rgba(250,35,59,0.3)' : '#FA233B',
-              paddingHorizontal: 14,
-              paddingVertical: 8,
-              borderRadius: 20,
-              minWidth: 60,
-              alignItems: 'center',
-            }}
-          >
-            {connectMutation.isPending ? (
-              <ActivityIndicator size="small" color="#FA233B" />
-            ) : (
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', fontFamily: 'Inter_700Bold' }}>
-                Done ✓
+          <View style={{ width: 60 }} />
+        </View>
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <ScrollView contentContainerStyle={{ padding: 24 }}>
+
+            {/* Instagram logo area */}
+            <View style={{ alignItems: 'center', marginBottom: 32, marginTop: 8 }}>
+              <View style={{
+                width: 72, height: 72, borderRadius: 20,
+                background: 'linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)',
+                backgroundColor: '#E1306C',
+                alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+              }}>
+                <Text style={{ fontSize: 36 }}>📸</Text>
+              </View>
+              <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700', marginBottom: 6 }}>
+                Sign in to Instagram
+              </Text>
+              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, textAlign: 'center', lineHeight: 18 }}>
+                FeedFlow will log in as a mobile device to connect your account securely.
+              </Text>
+            </View>
+
+            {/* Error banner */}
+            {error && (
+              <View style={{
+                backgroundColor: 'rgba(250,35,59,0.12)',
+                padding: 14,
+                borderRadius: 12,
+                marginBottom: 20,
+                borderWidth: 1,
+                borderColor: 'rgba(250,35,59,0.25)',
+              }}>
+                <Text style={{ color: '#FF4458', fontSize: 13, lineHeight: 18 }}>
+                  {error}
+                </Text>
+              </View>
+            )}
+
+            {/* Username */}
+            <View style={{ marginBottom: 14 }}>
+              <Text style={{
+                color: 'rgba(255,255,255,0.45)', fontSize: 11,
+                textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 8
+              }}>
+                Username
+              </Text>
+              <TextInput
+                value={username}
+                onChangeText={setUsername}
+                placeholder="@yourusername"
+                placeholderTextColor="rgba(255,255,255,0.25)"
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!loginMutation.isPending}
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.07)',
+                  color: '#fff',
+                  borderRadius: 14,
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  fontSize: 16,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.1)',
+                }}
+              />
+            </View>
+
+            {/* Password */}
+            <View style={{ marginBottom: 28 }}>
+              <Text style={{
+                color: 'rgba(255,255,255,0.45)', fontSize: 11,
+                textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 8
+              }}>
+                Password
+              </Text>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Password"
+                placeholderTextColor="rgba(255,255,255,0.25)"
+                secureTextEntry
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!loginMutation.isPending}
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.07)',
+                  color: '#fff',
+                  borderRadius: 14,
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  fontSize: 16,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.1)',
+                }}
+              />
+            </View>
+
+            {/* Connect Button */}
+            <TouchableOpacity
+              onPress={handleConnect}
+              disabled={loginMutation.isPending}
+              style={{
+                backgroundColor: loginMutation.isPending ? 'rgba(225,48,108,0.4)' : '#E1306C',
+                borderRadius: 14,
+                paddingVertical: 16,
+                alignItems: 'center',
+                flexDirection: 'row',
+                justifyContent: 'center',
+                gap: 10,
+              }}
+            >
+              {loginMutation.isPending ? (
+                <>
+                  <ActivityIndicator color="#fff" size="small" />
+                  <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+                    Connecting via mobile browser…
+                  </Text>
+                </>
+              ) : (
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+                  Connect Account
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            {loginMutation.isPending && (
+              <Text style={{
+                color: 'rgba(255,255,255,0.4)', fontSize: 12,
+                textAlign: 'center', marginTop: 16, lineHeight: 18
+              }}>
+                FeedFlow is opening a private iPhone browser session to log in. This takes about 10–20 seconds…
               </Text>
             )}
-          </TouchableOpacity>
-        </View>
 
-        {/* Info banner */}
-        <View style={{
-          backgroundColor: 'rgba(250,35,59,0.08)',
-          borderBottomWidth: 1,
-          borderBottomColor: 'rgba(250,35,59,0.15)',
-          paddingHorizontal: 20,
-          paddingVertical: 10,
-        }}>
-          <Text style={{
-            color: 'rgba(255,255,255,0.6)',
-            fontSize: 12,
-            textAlign: 'center',
-            fontFamily: 'Inter_400Regular',
-            lineHeight: 18,
-          }}>
-            🔒 Log in below. Once you see your Instagram feed, tap{' '}
-            <Text style={{ color: '#FA233B', fontWeight: '700' }}>Done ✓</Text> above.
-          </Text>
-        </View>
-
-        {/* Error banner */}
-        {error && (
-          <View style={{
-            backgroundColor: 'rgba(250,35,59,0.1)',
-            paddingHorizontal: 20,
-            paddingVertical: 10,
-            borderBottomWidth: 1,
-            borderBottomColor: 'rgba(250,35,59,0.2)',
-          }}>
-            <Text style={{ color: '#FF2D55', fontSize: 13, textAlign: 'center', fontFamily: 'Inter_400Regular' }}>
-              {error}
-            </Text>
-          </View>
-        )}
-
-        {/* WebView loading spinner */}
-        {isWebViewLoading && (
-          <View style={{
-            position: 'absolute', top: 120, left: 0, right: 0,
-            alignItems: 'center', zIndex: 50,
-          }}>
-            <ActivityIndicator size="large" color="#FA233B" />
-          </View>
-        )}
-
-        <WebView
-          ref={webViewRef}
-          source={{ uri: INSTAGRAM_LOGIN_URL }}
-          onMessage={handleMessage}
-          onNavigationStateChange={handleNavigationChange}
-          onLoadEnd={() => setIsWebViewLoading(false)}
-          injectedJavaScript={USERNAME_EXTRACTOR_JS}
-          sharedCookiesEnabled={true}
-          thirdPartyCookiesEnabled={true}
-          style={{ flex: 1, backgroundColor: '#000' }}
-          userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
-        />
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </Modal>
   );

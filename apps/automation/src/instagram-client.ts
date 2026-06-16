@@ -15,9 +15,29 @@ export class InstagramClient {
   ) {}
 
   async initialize(headless = true): Promise<boolean> {
-    this.browser = await chromium.launch({ headless });
+    // Use a real iPhone 15 Pro fingerprint — Instagram trusts mobile logins far more than desktop bots
+    const IPHONE_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1';
+
+    this.browser = await chromium.launch({
+      headless,
+      args: [
+        '--disable-blink-features=AutomationControlled',
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+      ]
+    });
+
     this.context = await this.browser.newContext({
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      userAgent: IPHONE_UA,
+      viewport: { width: 390, height: 844 },   // iPhone 15 Pro screen
+      deviceScaleFactor: 3,
+      isMobile: true,
+      hasTouch: true,
+      locale: 'en-US',
+      timezoneId: 'America/New_York',
+      extraHTTPHeaders: {
+        'Accept-Language': 'en-US,en;q=0.9',
+      }
     });
 
     // Try restoring session
@@ -28,14 +48,24 @@ export class InstagramClient {
     }
 
     this.page = await this.context.newPage();
+
+    // Mask automation fingerprints
+    await this.page.addInitScript(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+    });
     
     // Check if session is actually valid
     await this.page.goto('https://www.instagram.com/', { waitUntil: 'domcontentloaded' });
     
     // Wait to see if login form appears or home feed appears
     try {
-      // If we see the home icon or avatar, we are logged in
-      await this.page.waitForSelector('svg[aria-label="Home"]', { timeout: 5000 });
+      // Mobile IG uses slightly different nav — check for nav bar or home link
+      await this.page.waitForSelector('a[href="/"], svg[aria-label="Home"], nav', { timeout: 8000 });
+      const isLoginPage = await this.page.$('input[name="username"]');
+      if (isLoginPage) {
+        console.log(`[InstagramClient] Session invalid or not found. Needs login.`);
+        return false;
+      }
       return true; // Successfully restored and valid
     } catch (e) {
       console.log(`[InstagramClient] Session invalid or not found. Needs login.`);
@@ -43,22 +73,37 @@ export class InstagramClient {
     }
   }
 
-  async login(username: string, password: string):Promise<boolean> {
+  async login(username: string, password: string): Promise<boolean> {
     if (!this.page || !this.context) throw new Error('Client not initialized');
 
-    await this.page.goto('https://www.instagram.com/', { waitUntil: 'domcontentloaded' });
+    await this.page.goto('https://www.instagram.com/accounts/login/', { waitUntil: 'domcontentloaded' });
     
     try {
-      await this.page.waitForSelector('input[name="username"]', { timeout: 5000 });
-      await this.page.fill('input[name="username"]', username);
-      await this.page.fill('input[name="password"]', password);
-      
-      // Click login
+      await this.page.waitForSelector('input[name="username"]', { timeout: 10000 });
+
+      // Human-like: tap username field, wait, then type slowly
+      await this.page.click('input[name="username"]');
+      await this.page.waitForTimeout(600);
+      await this.page.type('input[name="username"]', username, { delay: 80 });
+      await this.page.waitForTimeout(500);
+
+      await this.page.click('input[name="password"]');
+      await this.page.waitForTimeout(400);
+      await this.page.type('input[name="password"]', password, { delay: 90 });
+      await this.page.waitForTimeout(800);
+
+      // Tap login button
       await this.page.click('button[type="submit"]');
       
-      // Wait for navigation / home feed
-      await this.page.waitForSelector('svg[aria-label="Home"]', { timeout: 15000 });
+      // Wait for home feed — on mobile IG this can take a while
+      await this.page.waitForURL(/instagram\.com\/(accounts\/onetap|\/?)/, { timeout: 20000 });
       
+      // Handle "Save login info?" prompt if shown
+      try {
+        const saveInfoBtn = await this.page.waitForSelector('button:has-text("Save Info")', { timeout: 4000 });
+        if (saveInfoBtn) await saveInfoBtn.click();
+      } catch (_) { /* no prompt — that's fine */ }
+
       // Successfully logged in! Save cookies.
       const cookies = await this.context.cookies();
       await saveSession(this.accountId, cookies);

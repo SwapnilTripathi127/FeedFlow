@@ -47,7 +47,7 @@ export default function LoginScreen() {
 
       <View className="mb-8">
         <TextInput 
-          className="bg-surfaceElevated border border-white/5 text-white rounded-2xl px-5 py-4 h-16 mb-4 font-medium text-lg"
+          className="bg-surfaceElevated border border-white/5 text-white rounded-3xl px-5 py-4 h-16 mb-4 font-medium text-lg"
           style={{ fontFamily: 'Inter_500Medium' }}
           placeholder="Email address"
           placeholderTextColor="#8E8E93"
@@ -57,7 +57,7 @@ export default function LoginScreen() {
           onChangeText={setEmail}
         />
         <TextInput 
-          className="bg-surfaceElevated border border-white/5 text-white rounded-2xl px-5 py-4 h-16 font-medium text-lg"
+          className="bg-surfaceElevated border border-white/5 text-white rounded-3xl px-5 py-4 h-16 font-medium text-lg"
           style={{ fontFamily: 'Inter_500Medium' }}
           placeholder="Password"
           placeholderTextColor="#8E8E93"
@@ -68,7 +68,7 @@ export default function LoginScreen() {
       </View>
 
       {errorMsg ? (
-        <View className="bg-[#FA233B]/10 p-4 rounded-2xl mb-8 border border-[#FA233B]/20">
+        <View className="bg-[#FA233B]/10 p-4 rounded-3xl mb-8 border border-[#FA233B]/20">
           <Text className="text-[#FF2D55] text-center font-medium" style={{ fontFamily: 'Inter_500Medium' }}>{errorMsg}</Text>
         </View>
       ) : <View className="h-4 mb-4" />}

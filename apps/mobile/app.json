@@ -7,7 +7,10 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ufota.feedflow"
+      "bundleIdentifier": "com.ufota.feedflow",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.ufota.feedflow"
@@ -15,8 +18,7 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-dev-client",
-      "@react-native-cookies/cookies"
+      "expo-dev-client"
     ],
     "experiments": {
       "typedRoutes": true
