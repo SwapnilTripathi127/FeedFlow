@@ -102,10 +102,28 @@ router.post('/connect', async (req: AuthenticatedRequest, res) => {
     const page = await context.newPage();
     
     await page.goto('https://www.instagram.com/', { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('input[name="username"]', { state: 'visible' });
-    await page.fill('input[name="username"]', username);
-    await page.fill('input[name="password"]', password);
-    await page.keyboard.press('Enter');
+    
+    // Attempt to accept cookies if presented (common in EU/headless)
+    try {
+      const cookieBtn = page.locator('button', { hasText: /Allow all cookies/i }).first();
+      await cookieBtn.waitFor({ state: 'visible', timeout: 5000 });
+      await cookieBtn.click();
+      await page.waitForTimeout(1000); // Give it a second to dismiss
+    } catch (e) {
+      // Ignore if not present
+    }
+
+    try {
+      await page.waitForSelector('input[name="username"]', { state: 'visible', timeout: 15000 });
+      await page.fill('input[name="username"]', username);
+      await page.fill('input[name="password"]', password);
+      await page.keyboard.press('Enter');
+    } catch (e: any) {
+      const title = await page.title();
+      const content = await page.content();
+      const isBlocked = content.includes('Challenge Required') || content.includes('Please wait a few minutes');
+      throw new Error(`Instagram Login Timeout. Page Title: "${title}". Blocked: ${isBlocked}. Original Error: ${e.message}`);
+    }
     
     try {
       // Wait for the sessionid cookie to appear.
