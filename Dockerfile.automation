@@ -1,0 +1,41 @@
+FROM mcr.microsoft.com/playwright:v1.40.0-jammy AS builder
+
+# Install pnpm globally
+RUN npm install -g pnpm@9.12.0
+
+WORKDIR /app
+
+# Copy necessary files for monorepo install
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/ ./packages/
+COPY apps/automation/ ./apps/automation/
+
+# Install all dependencies
+RUN pnpm install --frozen-lockfile
+
+# Build shared types/package if needed
+RUN pnpm --filter @feedflow/shared build || true
+
+# Build automation
+RUN pnpm --filter @feedflow/automation build
+
+# Production Runner Stage
+FROM mcr.microsoft.com/playwright:v1.40.0-jammy AS runner
+
+RUN npm install -g pnpm@9.12.0
+
+WORKDIR /app
+
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/pnpm-lock.yaml ./
+COPY --from=builder /app/pnpm-workspace.yaml ./
+COPY --from=builder /app/packages/ ./packages/
+COPY --from=builder /app/apps/automation/ ./apps/automation/
+COPY --from=builder /app/node_modules/ ./node_modules/
+
+# Configure Playwright to run headlessly in production
+ENV NODE_ENV=production
+ENV AUTOMATION_HEADLESS=true
+
+# Entry point for the worker engine
+CMD ["pnpm", "--filter", "@feedflow/automation", "start"]

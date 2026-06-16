@@ -17,11 +17,6 @@ export const requireAuth = async (req: AuthenticatedRequest, res: Response, next
 
   const token = authHeader.replace('Bearer ', '');
   
-  if (token === 'demo') {
-    req.user = { id: 'demo-user', email: 'demo@feedflow.local' };
-    return next();
-  }
-  
   const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
 
   if (error || !user) {

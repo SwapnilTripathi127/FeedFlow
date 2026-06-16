@@ -42,3 +42,23 @@ export function useConnectInstagram() {
     },
   });
 }
+
+export function useDisconnectInstagram() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const data = await fetchApi('/instagram/disconnect', {
+        method: 'DELETE',
+      });
+      return data;
+    },
+    onSuccess: () => {
+      // Clear the status cache directly
+      queryClient.setQueryData(['instagram', 'status'], {
+        connected: false,
+        username: null,
+      });
+    },
+  });
+}

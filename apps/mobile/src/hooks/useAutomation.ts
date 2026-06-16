@@ -5,6 +5,11 @@ export type AutomationStats = {
   isRunning: boolean;
   personalizationScore: number;
   actionsToday: number;
+  totalRuns: number;
+  postsAnalyzed: number;
+  totalActionsTaken: number;
+  topPreferences?: { name: string; percent: number }[];
+  recentLogs?: { message: string; timestamp: string }[];
 };
 
 export function useAutomationStats() {

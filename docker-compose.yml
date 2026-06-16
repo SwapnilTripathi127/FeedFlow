@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  feedflow-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - API_PORT=4000
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - SESSION_ENCRYPTION_KEY=${SESSION_ENCRYPTION_KEY}
+    restart: unless-stopped
+
+  feedflow-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.automation
+    environment:
+      - NODE_ENV=production
+      - AUTOMATION_HEADLESS=true
+      - AUTOMATION_USER_AGENT=Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36
+      - AUTOMATION_POLL_INTERVAL_MS=5000
+      - AUTOMATION_MIN_ACTION_DELAY_MS=2200
+      - AUTOMATION_MAX_ACTION_DELAY_MS=6800
+      - AUTOMATION_DAILY_ACTION_BUDGET=80
+      - AUTOMATION_SESSIONS_DIR=/app/.sessions
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - SESSION_ENCRYPTION_KEY=${SESSION_ENCRYPTION_KEY}
+    volumes:
+      - sessions-data:/app/.sessions
+    restart: unless-stopped
+    depends_on:
+      - feedflow-api
+
+volumes:
+  sessions-data:

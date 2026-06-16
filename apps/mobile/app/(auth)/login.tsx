@@ -1,46 +1,104 @@
-import { View, Text, TouchableOpacity, TextInput } from 'react-native';
+import { useState } from 'react';
+import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuthStore } from '../../src/store/authStore';
+import { LinearGradient } from 'expo-linear-gradient';
+import { supabase } from '../../src/services/supabase';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const signInDemo = useAuthStore(state => state.signInDemo);
+  
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const handleDemoSignIn = () => {
-    signInDemo();
-    router.replace('/onboarding');
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setErrorMsg('Please enter both email and password.');
+      return;
+    }
+    
+    setIsLoading(true);
+    setErrorMsg('');
+    
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    
+    setIsLoading(false);
+    
+    if (error) {
+      setErrorMsg(error.message);
+    } else {
+      router.replace('/(tabs)/dashboard');
+    }
   };
 
   return (
-    <View className="flex-1 justify-center p-md bg-background">
-      <View className="items-center mb-xl">
-        <Text className="text-Display font-bold text-foreground mb-sm">FeedFlow</Text>
-        <Text className="text-muted text-center text-Body">Sign in to reclaim your feed.</Text>
+    <KeyboardAvoidingView 
+      className="flex-1 bg-background justify-center px-lg"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <View className="mb-20 mt-10">
+        <Text className="text-white text-5xl font-bold tracking-tighter mb-4" style={{ fontFamily: 'Inter_700Bold' }}>FeedFlow.</Text>
+        <Text className="text-muted text-xl font-medium" style={{ fontFamily: 'Inter_500Medium' }}>Welcome back. Sign in to continue curating your digital space.</Text>
       </View>
 
-      <View className="bg-surface p-lg rounded-xl border border-muted">
+      <View className="mb-8">
         <TextInput 
-          className="border border-active bg-background text-foreground px-md py-sm rounded-lg mb-md h-12"
+          className="bg-surfaceElevated border border-white/5 text-white rounded-2xl px-5 py-4 h-16 mb-4 font-medium text-lg"
+          style={{ fontFamily: 'Inter_500Medium' }}
           placeholder="Email address"
-          placeholderTextColor="#A1A1AA"
+          placeholderTextColor="#8E8E93"
+          autoCapitalize="none"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
         />
         <TextInput 
-          className="border border-active bg-background text-foreground px-md py-sm rounded-lg mb-lg h-12"
+          className="bg-surfaceElevated border border-white/5 text-white rounded-2xl px-5 py-4 h-16 font-medium text-lg"
+          style={{ fontFamily: 'Inter_500Medium' }}
           placeholder="Password"
-          placeholderTextColor="#A1A1AA"
+          placeholderTextColor="#8E8E93"
           secureTextEntry
+          value={password}
+          onChangeText={setPassword}
         />
-        <TouchableOpacity 
-          className="bg-iris py-md rounded-lg items-center"
-          onPress={handleDemoSignIn}
+      </View>
+
+      {errorMsg ? (
+        <View className="bg-[#FA233B]/10 p-4 rounded-2xl mb-8 border border-[#FA233B]/20">
+          <Text className="text-[#FF2D55] text-center font-medium" style={{ fontFamily: 'Inter_500Medium' }}>{errorMsg}</Text>
+        </View>
+      ) : <View className="h-4 mb-4" />}
+
+      <TouchableOpacity 
+        className="mb-8"
+        onPress={handleLogin}
+        disabled={isLoading}
+      >
+        <LinearGradient
+          colors={['#FF2D55', '#FA233B']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className={`h-14 rounded-full items-center flex-row justify-center shadow-lg ${isLoading ? 'opacity-80' : ''}`}
         >
-          <Text className="text-foreground font-semibold text-Body">Sign In (Demo)</Text>
+          {isLoading ? (
+            <ActivityIndicator color="#FFFFFF" className="mr-3" />
+          ) : null}
+          <Text className="text-white font-bold text-lg tracking-wide" style={{ fontFamily: 'Inter_600SemiBold' }}>
+            {isLoading ? 'Signing In...' : 'Sign In'}
+          </Text>
+        </LinearGradient>
+      </TouchableOpacity>
+
+      <View className="flex-row justify-center">
+        <Text className="text-muted text-base" style={{ fontFamily: 'Inter_400Regular' }}>New to FeedFlow? </Text>
+        <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+          <Text className="text-[#FA233B] text-base font-semibold" style={{ fontFamily: 'Inter_600SemiBold' }}>Create an account</Text>
         </TouchableOpacity>
       </View>
-
-      <TouchableOpacity className="mt-lg items-center" onPress={() => router.push('/(auth)/register')}>
-        <Text className="text-iris-light text-Body">Create an account</Text>
-      </TouchableOpacity>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

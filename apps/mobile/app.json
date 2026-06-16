@@ -15,13 +15,15 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.ufota.feedflow",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#09090B"
       }
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

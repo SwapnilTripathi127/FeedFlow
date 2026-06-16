@@ -9,21 +9,22 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        background: "#09090B",
-        foreground: "#FAFAFA",
-        surface: "#18181B",
-        muted: "#A1A1AA",
+        background: "#000000",
+        foreground: "#FFFFFF",
+        surface: "#1C1C1E",
+        surfaceElevated: "#2C2C2E",
+        muted: "#8E8E93",
         border: {
-          muted: "#27272A",
-          active: "#3F3F46"
+          muted: "#38383A",
+          active: "#48484A"
         },
-        iris: {
-          light: "#A78BFA",
-          DEFAULT: "#7C3AED",
-          dark: "#6D28D9"
-        },
-        emerald: "#10B981",
-        coral: "#F43F5E"
+        apple: {
+          red: "#FA233B",
+          pink: "#FF2D55",
+          blue: "#0A84FF",
+          purple: "#5E5CE6",
+          teal: "#64D2FF"
+        }
       },
       fontFamily: {
         sans: ["System"]

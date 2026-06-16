@@ -1,10 +1,54 @@
-import dotenv from 'dotenv';
+import { supabaseAdmin } from './config/supabase';
+import { executeJob } from './job-runner';
 
-dotenv.config({ path: '../../.env' });
+const POLL_INTERVAL = 30000; // 30 seconds
 
-console.log('FeedFlow Automation Worker Started');
-console.log('Polling for jobs...');
+async function pollJobs() {
+  console.log(`[Worker] Polling for pending jobs...`);
+  
+  const { data: jobs, error } = await supabaseAdmin
+    .from('automation_jobs')
+    .select('*')
+    .eq('status', 'pending')
+    .lte('scheduled_at', new Date().toISOString())
+    .limit(5);
 
-// Placeholder for worker logic
-// This will connect to Supabase, query `automation_jobs` table
-// and launch Playwright based on the actionType.
+  if (error) {
+    console.error(`[Worker] Error polling jobs:`, error.message);
+    return;
+  }
+
+  if (jobs && jobs.length > 0) {
+    console.log(`[Worker] Found ${jobs.length} pending jobs to execute.`);
+    for (const job of jobs) {
+      await executeJob(job);
+    }
+  }
+}
+
+async function startWorker() {
+  console.log(`[Worker] Started FeedFlow Automation Worker Engine`);
+  // Run once immediately
+  await pollJobs();
+
+  // Then loop
+  setInterval(async () => {
+    await pollJobs();
+  }, POLL_INTERVAL);
+}
+
+// Handle graceful shutdown
+process.on('SIGINT', () => {
+  console.log('[Worker] Shutting down...');
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('[Worker] Shutting down...');
+  process.exit(0);
+});
+
+startWorker().catch(err => {
+  console.error('[Worker] Fatal error:', err);
+  process.exit(1);
+});

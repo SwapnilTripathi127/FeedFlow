@@ -1,9 +1,7 @@
-
-import { View, Text } from 'react-native';
-
-// For demonstrable web layout we will just use a basic flex view if Tabs are complex to set up instantly without exact deps.
-// Actually expo-router Tabs work great.
 import { Tabs as ExpoTabs } from 'expo-router';
+import { BlurView } from 'expo-blur';
+import { StyleSheet, View } from 'react-native';
+import { Play, List, Activity } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -11,23 +9,53 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#09090B',
-          borderTopColor: '#27272A',
+          position: 'absolute',
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
+          elevation: 0,
         },
-        tabBarActiveTintColor: '#7C3AED',
-        tabBarInactiveTintColor: '#A1A1AA',
+        tabBarBackground: () => (
+          <BlurView 
+            tint="dark" 
+            intensity={80} 
+            style={StyleSheet.absoluteFill} 
+            className="border-t border-white/10"
+          />
+        ),
+        tabBarActiveTintColor: '#FA233B',
+        tabBarInactiveTintColor: '#8E8E93',
+        tabBarLabelStyle: {
+          fontFamily: 'Inter_500Medium',
+          fontSize: 10,
+          marginTop: 4,
+        }
       }}
     >
       <ExpoTabs.Screen
         name="dashboard"
         options={{
-          title: 'Dashboard',
+          title: 'Listen Now',
+          tabBarIcon: ({ color, size }) => (
+            <Play color={color} size={26} />
+          ),
+        }}
+      />
+      <ExpoTabs.Screen
+        name="analytics"
+        options={{
+          title: 'Insights',
+          tabBarIcon: ({ color, size }) => (
+            <Activity color={color} size={26} />
+          ),
         }}
       />
       <ExpoTabs.Screen
         name="preferences"
         options={{
-          title: 'Preferences',
+          title: 'Library',
+          tabBarIcon: ({ color, size }) => (
+            <List color={color} size={26} />
+          ),
         }}
       />
     </ExpoTabs>
