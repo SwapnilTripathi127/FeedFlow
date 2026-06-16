@@ -114,9 +114,20 @@ router.post('/connect', async (req: AuthenticatedRequest, res) => {
     }
 
     try {
-      await page.waitForSelector('input[name="username"]', { state: 'visible', timeout: 15000 });
-      await page.fill('input[name="username"]', username);
-      await page.fill('input[name="password"]', password);
+      // Wait for either the standard username field or the fallback email field
+      const userInput = page.locator('input[name="username"], input[name="email"]').first();
+      await userInput.waitFor({ state: 'visible', timeout: 15000 });
+      
+      const isFallbackForm = await page.locator('input[name="email"]').count() > 0;
+      
+      if (isFallbackForm) {
+        await page.fill('input[name="email"]', username);
+        await page.fill('input[name="pass"]', password);
+      } else {
+        await page.fill('input[name="username"]', username);
+        await page.fill('input[name="password"]', password);
+      }
+      
       await page.keyboard.press('Enter');
     } catch (e: any) {
       const title = await page.title();
