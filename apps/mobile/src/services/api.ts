@@ -1,6 +1,6 @@
 import { useAuthStore } from '../store/authStore';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:4000';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://feedflowapi-production.up.railway.app';
 
 export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
   const session = useAuthStore.getState().session;
