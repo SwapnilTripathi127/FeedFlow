@@ -31,6 +31,7 @@ COPY --from=builder /app/apps/api/ ./apps/api/
 COPY --from=builder /app/node_modules/ ./node_modules/
 
 ENV NODE_ENV=production
+ENV AUTOMATION_HEADLESS=true
 EXPOSE 4000
 
 CMD ["pnpm", "--filter", "@feedflow/api", "start"]
