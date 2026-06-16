@@ -6,14 +6,17 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ufota.feedflow"
     },
     "android": {
       "package": "com.ufota.feedflow"
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "expo-dev-client",
+      "@react-native-cookies/cookies"
     ],
     "experiments": {
       "typedRoutes": true

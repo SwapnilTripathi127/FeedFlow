@@ -4,6 +4,7 @@ import {
   SafeAreaView, StatusBar,
 } from 'react-native';
 import { WebView, WebViewNavigation } from 'react-native-webview';
+import CookieManager from '@react-native-cookies/cookies';
 import { useConnectInstagram } from '../hooks/useInstagram';
 
 type ConnectInstagramModalProps = {
@@ -13,17 +14,9 @@ type ConnectInstagramModalProps = {
 
 const INSTAGRAM_LOGIN_URL = 'https://www.instagram.com/accounts/login/';
 
-// Injected on every page load to extract cookies
-const COOKIE_EXTRACTOR_JS = `
+// Injected on page load to grab username from page title
+const USERNAME_EXTRACTOR_JS = `
   (function() {
-    function getCookie(name) {
-      const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-      return match ? match[2] : null;
-    }
-    const sessionid = getCookie('sessionid');
-    if (sessionid) {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'sessionid', value: sessionid }));
-    }
     const titleMatch = document.title.match(/^([^•]+)\s*•/);
     if (titleMatch && titleMatch[1].trim() !== 'Instagram') {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'username', value: titleMatch[1].trim() }));
@@ -35,62 +28,52 @@ const COOKIE_EXTRACTOR_JS = `
 export function ConnectInstagramModal({ visible, onClose }: ConnectInstagramModalProps) {
   const [isWebViewLoading, setIsWebViewLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const sessionRef = useRef<{ sessionid?: string; username?: string }>({});
+  const usernameRef = useRef<string>('');
   const webViewRef = useRef<WebView>(null);
   const connectMutation = useConnectInstagram();
 
   const handleMessage = (event: { nativeEvent: { data: string } }) => {
     try {
       const msg = JSON.parse(event.nativeEvent.data);
-      if (msg.type === 'sessionid') sessionRef.current.sessionid = msg.value;
-      if (msg.type === 'username') sessionRef.current.username = msg.value;
+      if (msg.type === 'username' && msg.value) {
+        usernameRef.current = msg.value;
+      }
     } catch (_) {}
   };
 
-  const handleNavigationChange = (navState: WebViewNavigation) => {
-    // Just track URL changes - user will tap button manually
-    const url = navState.url || '';
-    // Auto-extract cookie on any navigation
-    const hasSession = !!sessionRef.current.sessionid;
-    if (!hasSession) {
-      // keep trying to extract - injectedJavaScript handles this
-    }
-    void url;
+  const handleNavigationChange = (_navState: WebViewNavigation) => {
+    // Re-run username extractor on every navigation
+    webViewRef.current?.injectJavaScript(USERNAME_EXTRACTOR_JS);
   };
 
-  const handleLoadEnd = () => {
-    setIsWebViewLoading(false);
-  };
-
-  // When user taps Done, inject JS to extract cookie right now, then save
-  const handleSaveSession = () => {
+  const handleDone = async () => {
     setError(null);
-    // First inject the extractor to get the latest cookies
-    webViewRef.current?.injectJavaScript(COOKIE_EXTRACTOR_JS);
-    // Give JS 500ms to respond via postMessage, then proceed
-    setTimeout(() => {
-      const { sessionid, username } = sessionRef.current;
+    try {
+      // Use native CookieManager to read ALL cookies including HttpOnly sessionid
+      const cookies = await CookieManager.get('https://www.instagram.com', true);
+      const sessionid = cookies['sessionid']?.value;
+
       if (!sessionid) {
-        setError('Not logged in yet — please complete the Instagram login first, then tap Done ✓.');
+        setError('Not logged in yet — please finish the Instagram login, then tap Done ✓.');
         return;
       }
-      const finalUsername = username && username !== 'Instagram' ? username : ('ig_user_' + Date.now());
+
+      const username = usernameRef.current || ('ig_user_' + Date.now());
+
       connectMutation.mutate(
-        { username: finalUsername, sessionid },
+        { username, sessionid },
         {
-          onSuccess: () => {
-            handleClose();
-          },
-          onError: (err: any) => {
-            setError(err.message || 'Failed to save session. Please try again.');
-          },
+          onSuccess: () => handleClose(),
+          onError: (err: any) => setError(err.message || 'Failed to save session.'),
         }
       );
-    }, 600);
+    } catch (err: any) {
+      setError('Could not read cookies: ' + err.message);
+    }
   };
 
   const handleClose = () => {
-    sessionRef.current = {};
+    usernameRef.current = '';
     setError(null);
     setIsWebViewLoading(true);
     onClose();
@@ -114,15 +97,17 @@ export function ConnectInstagramModal({ visible, onClose }: ConnectInstagramModa
           <TouchableOpacity onPress={handleClose} disabled={connectMutation.isPending}>
             <Text style={{ color: '#8E8E93', fontSize: 16, fontFamily: 'Inter_500Medium' }}>Cancel</Text>
           </TouchableOpacity>
+
           <Text style={{ color: '#fff', fontSize: 17, fontWeight: '700', fontFamily: 'Inter_700Bold' }}>
             Connect Instagram
           </Text>
-          {/* This button is always visible - user taps it once logged in */}
+
+          {/* Always-visible Done button */}
           <TouchableOpacity
-            onPress={handleSaveSession}
+            onPress={handleDone}
             disabled={connectMutation.isPending}
             style={{
-              backgroundColor: connectMutation.isPending ? 'transparent' : '#FA233B',
+              backgroundColor: connectMutation.isPending ? 'rgba(250,35,59,0.3)' : '#FA233B',
               paddingHorizontal: 14,
               paddingVertical: 8,
               borderRadius: 20,
@@ -155,7 +140,8 @@ export function ConnectInstagramModal({ visible, onClose }: ConnectInstagramModa
             fontFamily: 'Inter_400Regular',
             lineHeight: 18,
           }}>
-            🔒 Log in below. Once you see your Instagram feed, tap <Text style={{ color: '#FA233B', fontWeight: '700' }}>Done ✓</Text> above.
+            🔒 Log in below. Once you see your Instagram feed, tap{' '}
+            <Text style={{ color: '#FA233B', fontWeight: '700' }}>Done ✓</Text> above.
           </Text>
         </View>
 
@@ -184,16 +170,15 @@ export function ConnectInstagramModal({ visible, onClose }: ConnectInstagramModa
           </View>
         )}
 
-        {/* The actual Instagram login WebView */}
         <WebView
           ref={webViewRef}
           source={{ uri: INSTAGRAM_LOGIN_URL }}
           onMessage={handleMessage}
           onNavigationStateChange={handleNavigationChange}
-          onLoadEnd={handleLoadEnd}
-          injectedJavaScript={COOKIE_EXTRACTOR_JS}
-          sharedCookiesEnabled
-          thirdPartyCookiesEnabled
+          onLoadEnd={() => setIsWebViewLoading(false)}
+          injectedJavaScript={USERNAME_EXTRACTOR_JS}
+          sharedCookiesEnabled={true}
+          thirdPartyCookiesEnabled={true}
           style={{ flex: 1, backgroundColor: '#000' }}
           userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
         />
