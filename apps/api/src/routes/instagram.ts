@@ -140,9 +140,9 @@ router.post('/connect', async (req: AuthenticatedRequest, res) => {
       // Wait for the sessionid cookie to appear.
       // We poll from the Node.js side (context.cookies) instead of page.waitForFunction 
       // because Instagram will redirect to a password reset page, which destroys the page context and causes crashes!
-      // Giving 5 full minutes (300 loops * 1s)
+      // Polling for sessionid cookie for 15 seconds
       let foundSession = false;
-      for (let i = 0; i < 300; i++) {
+      for (let i = 0; i < 15; i++) {
         const currentCookies = await context.cookies();
         if (currentCookies.some((c: any) => c.name === 'sessionid')) {
           foundSession = true;
@@ -152,7 +152,15 @@ router.post('/connect', async (req: AuthenticatedRequest, res) => {
       }
 
       if (!foundSession) {
-        throw new Error('Timeout waiting for sessionid cookie');
+        const title = await page.title();
+        const content = await page.content();
+        // Try to extract common error messages from the page
+        const errorMsg = await page.evaluate(() => {
+          const el = document.querySelector('[role="alert"], .error, #slfErrorAlert');
+          return el ? el.textContent : null;
+        }).catch(() => null);
+        
+        throw new Error(`Login failed or requires 2FA. Page Title: "${title}". Instagram Error: ${errorMsg || 'None detected'}`);
       }
       const cookies = await context.cookies();
       
