@@ -4,7 +4,14 @@
 
 FeedFlow is a premium control center (mobile app) paired with a Playwright-driven automation engine that gradually retrains Instagram's recommendation system around your declared interests. It's a hackathon-winning MVP, built to ship.
 
-![FeedFlow](./docs/hero.png)
+<p align="center">
+  <a href="https://drive.google.com/file/d/1JA1kNWUmw4OKEqUW8AFw9xsbLHwwYd6E/view?usp=drive_link">
+    <img src="https://img.shields.io/badge/⬇️%20Download%20APK-Android-brightgreen?style=for-the-badge&logo=android&logoColor=white" alt="Download APK" />
+  </a>
+</p>
+
+> **📱 Android APK** → [Download here](https://drive.google.com/file/d/1JA1kNWUmw4OKEqUW8AFw9xsbLHwwYd6E/view?usp=drive_link)  
+> Install on any Android device (enable _Install from unknown sources_ in settings if prompted).
 
 ---
 
