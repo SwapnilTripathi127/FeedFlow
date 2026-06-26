@@ -27,6 +27,16 @@ The mobile app is the cockpit. The automation engine is the product.
 
 ---
 
+## Key Features
+
+- 🤖 **Playwright Automation** — A headless Chromium engine simulating real human behavior.
+- 🔒 **Enterprise-Grade Security** — AES-256 encrypted storage for Instagram session cookies (no passwords stored).
+- ⚡ **Real-time Analytics** — Instantly track personalization scores, engagement counts, and run logs.
+- 🎨 **Premium UI/UX** — A stunning, dark-mode first design system built with React Native and NativeWind.
+- 🏗️ **Modern Stack** — Monorepo architecture with Express, Supabase, and Expo.
+
+---
+
 ## Architecture
 
 ```
